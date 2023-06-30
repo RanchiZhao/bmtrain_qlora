@@ -32,6 +32,7 @@ class AdamOffloadOptimizer(torch.optim.Optimizer):
         self._hold_steps = hold_steps
         self._events = {}
 
+    #梯度更新
     @torch.no_grad()
     def step(self, closure=None, scale=1):
         """Performs a single optimization step.
