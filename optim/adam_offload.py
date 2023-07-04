@@ -49,7 +49,6 @@ class AdamOffloadOptimizer(torch.optim.Optimizer):
 
         # parameters to be updated
         update_params = []
-
         for group in self.param_groups:
             for p in group['params']:
                 if p.grad is not None and p.requires_grad:
@@ -59,6 +58,9 @@ class AdamOffloadOptimizer(torch.optim.Optimizer):
                         raise RuntimeError('Adam only supports fp32 or fp16 gradients')
 
                     state = self.state[p]
+                    # print("state_key:", state.keys())
+                    #dict_keys(['step', 'exp_avg', 'exp_avg_sq', '_param_fp32', '_grad_fp32'])
+
                     # Lazy state initialization
                     if len(state) == 0:
                         state['step'] = 0
