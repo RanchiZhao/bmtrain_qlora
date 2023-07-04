@@ -1,4 +1,4 @@
-from typing import Callable, Iterable, Optional
+from typing import Callable, Iterable, Optional, Any
 import torch
 from .utils import round_up
 from .global_var import config
@@ -31,7 +31,8 @@ class DistributedParameter(torch.nn.Parameter):
             data : torch.Tensor, 
             requires_grad : bool = True, 
             init_method : Optional[Callable[['DistributedParameter'], None]] = None,
-            group : Optional[str] = None
+            group : Optional[str] = None,
+            quant_state : Optional[Any] = None
         ):
         if not config["initialized"]:
             raise RuntimeError("BMTrain is not initialized")
@@ -61,6 +62,8 @@ class DistributedParameter(torch.nn.Parameter):
         setattr(ret, "_init_method", init_method)
         setattr(ret, "_in_checkpoint_block", False)
         setattr(ret, "_group", group)
+        setattr(ret, "_quant_state", quant_state)
+        
         return ret
     
     @property
@@ -86,6 +89,13 @@ class DistributedParameter(torch.nn.Parameter):
     def _copy_data(self, data : torch.Tensor):
         self.data.copy_(data.view(-1)[self._start_partition : self._end_partition])
     
+    @property
+    def quant_state(self):
+        return self._quant_state
+    
+    @quant_state.setter
+    def quant_state(self, value):
+        self._quant_state = value
 
 class OpAllGather(torch.autograd.Function):
     @staticmethod
