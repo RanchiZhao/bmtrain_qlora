@@ -126,6 +126,7 @@ class Optimizer8bit(torch.optim.Optimizer):
         super().__setstate__(state)
 
     def load_state_dict(self, state_dict):
+        # print("load_state_dict")
         r"""Loads the optimizer state.
 
         Args:
@@ -259,9 +260,13 @@ class Optimizer8bit(torch.optim.Optimizer):
         #if self.is_paged: self.page_mng.prefetch_all()
         for gindex, group in enumerate(self.param_groups):
             for pindex, p in enumerate(group["params"]):
+                # print(p)
+                # print(f"shape: {p.data.shape}")
                 if p.grad is None:
                     continue
                 state = self.state[p]
+                # print("before_init_state")
+                # print(state)
                 if len(state) == 0:
                     self.init_state(group, p, gindex, pindex)
 
@@ -312,6 +317,7 @@ class Optimizer8bit(torch.optim.Optimizer):
             return buff
 
     def prefetch_state(self, p):
+        # print("prefetch_state")
         if self.is_paged:
             state = self.state[p]
             s1 = state['state1']
@@ -320,7 +326,6 @@ class Optimizer8bit(torch.optim.Optimizer):
                 F.prefetch_tensor(state['state1'])
                 if 'state2' in state:
                     F.prefetch_tensor(state['state2'])
-
 
 #we use
 class Optimizer2State(Optimizer8bit):
@@ -379,6 +384,7 @@ class Optimizer2State(Optimizer8bit):
 
     @torch.no_grad()
     def init_state(self, group, p, gindex, pindex):
+        # print("init_state") #没有
         config = self.get_config(gindex, pindex, group)
 
         if config["optim_bits"] == 32:
@@ -448,10 +454,9 @@ class Optimizer2State(Optimizer8bit):
 
         if config["max_unorm"] > 0.0:
             state["unorm_vec"] = torch.zeros((1,), device=p.device)
-
     @torch.no_grad()
     def update_step(self, group, p, gindex, pindex):
-        print("here we perform an update_step")
+        # print("here we perform an update_step")
         state = self.state[p]
         grad = p.grad
 
@@ -468,20 +473,22 @@ class Optimizer2State(Optimizer8bit):
             gnorm_scale = 1.0
 
         if state["state1"].dtype == torch.float:
-            print("first_road")
-            print("self.optimizer_name: ",self.optimizer_name)
-            print("grad: ",grad)
-            print("p: ",p)
-            print("state1: ",state["state1"])
-            print("state2: ",state["state2"])
-            print("betas[0]: ",config["betas"][0],)
-            print("betas[1]: ",config["betas"][1],)
-            print("eps: ",config["eps"])
-            print("step: ",step)
-            print("lr: ",config["lr"])
-            print("weight_decay: ",config["weight_decay"])
-            print("gnorm_scale: ",gnorm_scale)
-            print("skip_zeros: ",config["skip_zeros"])
+            # print("first_road")
+            # print("self.optimizer_name: ",self.optimizer_name)
+            # print("grad: ",grad)
+            # print("p: ",p)
+            # print("state1: ",state["state1"])
+            # print("state2: ",state["state2"])
+            # print("betas[0]: ",config["betas"][0],)
+            # print("betas[1]: ",config["betas"][1],)
+            # print("eps: ",config["eps"])
+            # print("step: ",step)
+            # print("lr: ",config["lr"])
+            # print("weight_decay: ",config["weight_decay"])
+            # print("gnorm_scale: ",gnorm_scale)
+            # print("skip_zeros: ",config["skip_zeros"])
+            # print("max_unorm: ",config["max_unorm"])
+            # print("state_unorm_vec: ",state["unorm_vec"] if config["max_unorm"] > 0.0 else None)
 
             F.optimizer_update_32bit(
                 self.optimizer_name,
@@ -501,7 +508,7 @@ class Optimizer2State(Optimizer8bit):
                 skip_zeros=config["skip_zeros"],
             )
         elif state["state1"].dtype == torch.uint8 and not config["block_wise"]:
-            print("second_road")
+            # print("second_road")
             F.optimizer_update_8bit(
                 self.optimizer_name,
                 grad,
@@ -531,23 +538,23 @@ class Optimizer2State(Optimizer8bit):
             state["max1"], state["new_max1"] = state["new_max1"], state["max1"]
             state["max2"], state["new_max2"] = state["new_max2"], state["max2"]
         elif state["state1"].dtype == torch.uint8 and config["block_wise"]:
-            print("self.optimizer_name: ",self.optimizer_name)
-            print("grad: ",grad)
-            print("p: ",p)
-            print("state1: ",state["state1"])
-            print("state2: ",state["state2"])
-            print("betas[0]: ",config["betas"][0],)
-            print("betas[1]: ",config["betas"][1],)
-            print("eps: ",config["eps"])
-            print("step: ",step)
-            print("lr: ",config["lr"])
-            print("qmap1: ",state["qmap1"])
-            print("qmap2: ",state["qmap2"])
-            print("absmax1: ",state["absmax1"])
-            print("absmax2: ",state["absmax2"])
-            print("weight_decay: ",config["weight_decay"])
-            print("gnorm_scale: ",gnorm_scale)
-            print("skip_zeros: ",config["skip_zeros"])
+            # print("self.optimizer_name: ",self.optimizer_name)
+            # print("grad: ",grad)
+            # print("p: ",p)
+            # print("state1: ",state["state1"])
+            # print("state2: ",state["state2"])
+            # print("betas[0]: ",config["betas"][0],)
+            # print("betas[1]: ",config["betas"][1],)
+            # print("eps: ",config["eps"])
+            # print("step: ",step)
+            # print("lr: ",config["lr"])
+            # print("qmap1: ",state["qmap1"])
+            # print("qmap2: ",state["qmap2"])
+            # print("absmax1: ",state["absmax1"])
+            # print("absmax2: ",state["absmax2"])
+            # print("weight_decay: ",config["weight_decay"])
+            # print("gnorm_scale: ",gnorm_scale)
+            # print("skip_zeros: ",config["skip_zeros"])
 
             F.optimizer_update_8bit_blockwise(
                 self.optimizer_name,
@@ -569,7 +576,6 @@ class Optimizer2State(Optimizer8bit):
                 skip_zeros=config["skip_zeros"],
             )
 
-# we should use
 class Adam8bit(Optimizer2State):
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0, amsgrad=False, optim_bits=32,
                        args=None, min_8bit_size=4096, percentile_clipping=100, block_wise=True, is_paged=False):
@@ -579,3 +585,8 @@ class PagedAdamW32bit(Optimizer2State):
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=1e-2, amsgrad=False, optim_bits=32,
                        args=None, min_8bit_size=4096, percentile_clipping=100, block_wise=True):
         super().__init__( "adam", params, lr, betas, eps, weight_decay, 32, args, min_8bit_size, percentile_clipping, block_wise, is_paged=True)
+
+class PagedAdamW8bit(Optimizer2State):
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=1e-2, amsgrad=False, optim_bits=32,
+                       args=None, min_8bit_size=4096, percentile_clipping=100, block_wise=True):
+        super().__init__( "adam", params, lr, betas, eps, weight_decay, 8, args, min_8bit_size, percentile_clipping, block_wise, is_paged=True)
